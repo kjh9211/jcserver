@@ -11,18 +11,16 @@ const errormessage_nodata = "대쉬보드로 진입중 정보가 올바르게 �
 // DB 사용용 코드
 const fs = require("fs");
 
-async function readlogindata(id,password) {
+async function readlogindata(id, password) {
     const hash = crypto.createHash('sha256').update(password).digest('hex');
-    try{
-        const password_saved = await fs.readFileSync(`./DB/LOGIN/${id}.json`);
-        if (hash == password_saved["password"]) return true; else return false;
-    }catch(error) {
+    try {
+        const password_saved = JSON.parse(await fs.readFileSync(`./DB/LOGIN/${id}.json`));
+    } catch (error) {
         await fs.writeFileSync(`./DB/ERROR/READ/${id}.txt`, error.message);
         console.log(`error | x | read | ${id} | ${hash} `);
         return false;
     }
 }
-
 async function savelogindata(id,password) {
     const hash = crypto.createHash('sha256').update(password).digest('hex');
     try{
@@ -38,7 +36,7 @@ async function savelogindata(id,password) {
 async function readlogintoken(id,password) {
     const hash = crypto.createHash('sha256').update(`${id}${password}`).digest('hex');
     try{
-        const password_saved = await fs.readFileSync(`./DB/LOGIN/TOKEN/${id}.json`);
+        const password_saved = await JSON.parse(fs.readFile(`./DB/LOGIN/TOKEN/${id}.json`))
         if (hash == password_saved["token"]) return true; else return false;
     }catch(error) {
         await fs.writeFileSync(`./DB/ERROR/READ/TOKEN/${id}.txt`,error);
@@ -103,6 +101,7 @@ app.get("/signup", async (req, res) => {
 });
 
 app.get('/loginre', async (req, res) => {
+    try{
     const id = req.query.id;
     const password = req.query.password;
 
@@ -113,8 +112,9 @@ app.get('/loginre', async (req, res) => {
         res.redirect(`/dashborad?token=${token}&id=${id}&password=${password}`);
     }
     else{
-        res.send(errormessage_id_passworderror);
-        res.redirect("/login");
+        res.json({ success: loginSuccessful });
+    }}catch(error){
+        res.send(errormessage_tokenerror);
     }
 });
 
@@ -125,7 +125,7 @@ app.get('/dashborad', async (req, res)=> {
     if (!token||!id||!password){return res.send(errormessage_nodata);}
 
     const checktoken = await readlogintoken(id,password);
-    if (!checktoken == token) res.redirect("/main"); return;
+    if (checktoken !== token) res.redirect("/main"); return;
     res.sendFile("./pages/dashborad.html");
 
 });
